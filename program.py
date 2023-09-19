@@ -52,4 +52,4 @@ for bgr in range(0,3):
 
 
 outputRsz = cv.resize(outputFrame, (out_width,out_height))
-cv.imwrite(f"output_{fileName}_{sample_count}_samples.png",outputRsz)
+cv.imwrite(f"output_{fileName.split('.')[0]}_{sample_count}_samples.png",outputRsz)
