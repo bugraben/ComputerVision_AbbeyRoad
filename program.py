@@ -8,14 +8,14 @@ BGR_CHANNELS = (0, 1, 2)
 channel_names = ["BLUE", "GREEN", "RED"]
 
 date = datetime.now()
-fileName = "speed_up.mp4"
+fileName = "Abbey_Road_2809.mp4"
 ratio = [16,9]
 in_width = 1920   
 in_height = int(in_width / ratio[0] * ratio[1])
 samplingRate = 1
 out_width = 1920
 out_height= int(out_width / ratio[0] * ratio[1])
-sample_count = 160
+sample_count = 600
 preview_resolution = (int(in_width*0.35) , int(in_height*0.35))
 
 
@@ -43,26 +43,27 @@ def processChannel(channel = None, frames = None, result = None):
         raise ValueError("results: Argument 'channel' must be one of %r." % BGR_CHANNELS)
 
 def captureSequence():
-    frames_0 = np.array([], dtype="uint8")
-    frames_1 = np.array([], dtype="uint8")
-    frames_2 = np.array([], dtype="uint8")
-    frames_3 = np.array([], dtype="uint8")
+    frames = np.array([], dtype="uint8")
+    frames_temp = np.array([], dtype="uint8")
+
     cap = cv.VideoCapture(fileName)
+
+    i = 50
+
     for a in range(sample_count):
         ret, frame = cap.read()
         if ret == True:
             # sleep(0.001)
-            frame = cv.resize(frame,(in_width,in_height))
-            # frames = np.append(frames, frame)
+            if i > 49:
+                print(i)
+                i = 0
+                frames = np.append(frames, frames_temp)
+                frames_temp = np.array([], dtype="uint8")
 
-            if a < 400:
-                frames_0 = np.append(frames_0, frame)
-            elif a < 800:
-                frames_2 = np.append(frames_1, frame)
-            elif a < 1200:
-                frames_2 = np.append(frames_2, frame)
-            else:
-                frames_3 = np.append(frames_3, frame)
+            i += 1
+            frame = cv.resize(frame,(in_width,in_height))
+            frames_temp = np.append(frames_temp, frame)
+
 
             # print(a)
             cv.imshow("Video", cv.resize(cv.putText(frame, str(a), (50, 50), cv.FONT_HERSHEY_PLAIN, 3, (255 , 255, 255), 3) , preview_resolution))
@@ -78,15 +79,13 @@ def captureSequence():
     cap.release()
     cv.destroyAllWindows()
     print("Closed")
-
-    frames = np.array([frames_0, frames_1, frames_2, frames_3], dtype="uint8")
+    frames = np.append(frames, frames_temp)
     frames = frames.reshape(sample_count, in_height, in_width, 3)
     return frames
 
 if __name__ == '__main__':
 
-    captureSequence()
-
+    frames = captureSequence()
 
     manager = Manager()
 
