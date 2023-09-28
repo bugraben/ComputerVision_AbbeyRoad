@@ -7,7 +7,7 @@ from datetime import datetime
 BGR_CHANNELS = (0, 1, 2)
 channel_names = ["BLUE", "GREEN", "RED"]
 
-date = datetime.now()
+datetime = datetime.now()
 fileName = "Abbey_Road_2809.mp4"
 ratio = [16,9]
 in_width = 1920   
@@ -15,19 +15,19 @@ in_height = int(in_width / ratio[0] * ratio[1])
 samplingRate = 1
 out_width = 1920
 out_height= int(out_width / ratio[0] * ratio[1])
-sample_count = 300
-preview_resolution = (int(in_width*0.35) , int(in_height*0.35))
+sample_count = 150
+preview_resolution = (int(in_width*0.20) , int(in_height*0.20))
 
 
 outputImage = np.zeros((in_height, in_width, 3), dtype = "uint8")
 
-def processChannel(channel = None, frames = None, result = None):
+def processChannel(channel = None, frames = None, result = None, sequence:int = None):
 
 # preview_resolution, in_height, in_width değişkenleri main scope'ta ama local scopun içinden erişebiliyor
 
     oneChannelFrame = np.zeros((in_height, in_width), dtype="uint8")
     if channel in BGR_CHANNELS:
-        for row in range(0,in_height):
+        for row in range(sequence-int(in_height/4), sequence):
             print(f"ROW: {row} | CHA: {channel_names[channel]}")
             for column in range(0,in_width):
                 pixel = np.array([],dtype="uint8")
@@ -37,7 +37,7 @@ def processChannel(channel = None, frames = None, result = None):
                 oneChannelFrame[row, column] = pixel.mean()
             oneChannelFrame_visualize = np.zeros((preview_resolution[1], preview_resolution[0], 3), dtype="uint8")
             oneChannelFrame_visualize[:, :, channel] = cv.resize(oneChannelFrame, preview_resolution)
-            cv.imshow(channel_names[channel], cv.putText(oneChannelFrame_visualize, f"{row}/{in_height}", (50, 50), cv.FONT_HERSHEY_SCRIPT_SIMPLEX, 1, (255,255,255), 3))
+            cv.imshow(channel_names[channel], cv.putText(oneChannelFrame_visualize, f"{row}/{sequence}", (50, 50), cv.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (255,255,255), 3))
             cv.waitKey(1)
         cv.destroyAllWindows()
         result.append(oneChannelFrame)
@@ -69,7 +69,7 @@ def captureSequence():
 
 
             # print(a)
-            cv.imshow("Video", cv.resize(cv.putText(frame, str(a), (50, 50), cv.FONT_HERSHEY_PLAIN, 3, (255 , 255, 255), 3) , preview_resolution))
+            cv.imshow("Video", cv.resize(cv.putText(frame, str(a), (50, 50), cv.FONT_HERSHEY_PLAIN, 3, (255 , 255, 255), 3) , (in_width*40, in_height*40)))
 
         else: 
             print("Not enough samples!")
@@ -93,34 +93,50 @@ if __name__ == '__main__':
     manager = Manager()
 
     channel_blue = manager.list()
-    channel_green = manager.list()
-    channel_red = manager.list()
+    channel_blue0 = manager.list()
+    channel_blue1 = manager.list()
+    channel_blue2 = manager.list()
+    # channel_green = manager.list()
+    # channel_red = manager.list()
 
-    seq0 = in_height/3
-    seq1 = in_height/3*2
-    seq2 = None
+    seq0 = int(in_height/4)
+    seq1 = int(in_height/2)
+    seq2 = int(in_height/4*3)
 
-    p_blue = Process(target=processChannel, args=(0, frames, channel_blue))
-    p_green = Process(target=processChannel, args=(1, frames, channel_green))
-    p_red = Process(target=processChannel, args=(2, frames, channel_red))
+    p_blue = Process(target=processChannel, args=(0, frames, channel_blue, seq0))
+    p_blue0 = Process(target=processChannel, args=(0, frames, channel_blue0, seq1))
+    p_blue1 = Process(target=processChannel, args=(0, frames, channel_blue1, seq2))
+    p_blue2 = Process(target=processChannel, args=(0, frames, channel_blue2, in_height))
+    # p_green = Process(target=processChannel, args=(1, frames, channel_green))
+    # p_red = Process(target=processChannel, args=(2, frames, channel_red))
 
 
     p_blue.start()
-    p_green.start()
-    p_red.start()
+    p_blue0.start()
+    p_blue1.start()
+    p_blue2.start()
+    # p_green.start()
+    # p_red.start()
     print("Processes have been started.")
 
 
     p_blue.join()
-    p_green.join()
-    p_red.join()
+    p_blue0.join()
+    p_blue1.join()
+    p_blue2.join()
+    # p_green.join()
+    # p_red.join()
     print("Processes OK.")
+
+    channel_blue[0][seq0:seq1, :] = channel_blue0
+    channel_blue[0][seq1:seq2, :] = channel_blue1
+    channel_blue[0][seq2:, :] = channel_blue2
 
 
     outputImage[:, :, 0] = channel_blue[0]
-    outputImage[:, :, 1] = channel_green[0]
-    outputImage[:, :, 2] = channel_red[0]
+    # outputImage[:, :, 1] = channel_green[0]
+    # outputImage[:, :, 2] = channel_red[0]
 
     outputRsz = cv.resize(outputImage, (out_width,out_height))
-    cv.imwrite(f"output_{fileName.split('.')[0]}_{sample_count}_samples_{date.day}{date.month}{date.year}.png",outputRsz)
+    cv.imwrite(f"output_{fileName.split('.')[0]}_{sample_count}_samples_{datetime.day}{datetime.month}{datetime.year}_{datetime.hour}{datetime.minute}.png",outputRsz)
 
