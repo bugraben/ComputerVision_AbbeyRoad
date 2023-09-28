@@ -9,12 +9,12 @@ channel_names = ["BLUE", "GREEN", "RED"]
 
 fileName = "Abbey_Road.mov"
 ratio = [16,9]
-in_width = 640   
+in_width = 960   
 in_height = int(in_width / ratio[0] * ratio[1])
-samplingRate = 2
-out_width = 960
+samplingRate = 1
+out_width = 1280
 out_height= int(out_width / ratio[0] * ratio[1])
-sample_count = 12
+sample_count = 475
 
 frames = np.array([], dtype="uint8")
 
@@ -30,7 +30,7 @@ def processChannel(channel = None, frames = None, result = None):
                     pixel = np.append(pixel,frames[fr,row,column,channel])
                     
                 oneChannelFrame[row, column] = pixel.mean()
-                oneChannelFrame_visualize[:, :, channel] = oneChannelFrame
+            oneChannelFrame_visualize[:, :, channel] = cv.putText(oneChannelFrame, f"{row}/{in_height}", (50, 50), cv.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (50), 4)
             cv.imshow(channel_names[channel], oneChannelFrame_visualize)
             cv.waitKey(1)
         cv.destroyAllWindows()
@@ -42,19 +42,20 @@ def processChannel(channel = None, frames = None, result = None):
 
 
 
-
 if __name__ == '__main__':
     cap = cv.VideoCapture(fileName)
 
     for a in range(0,sample_count):
         ret, frame = cap.read()
         if ret == True:
-            sleep(0.001)
+            # sleep(0.001)
             frame = cv.resize(frame,(in_width,in_height))
             frames = np.append(frames, frame)
-            cv.imshow("Video", frame)
+            cv.imshow("Video", cv.putText(frame, str(a), (50, 50), cv.FONT_HERSHEY_PLAIN, 3, (255 , 255, 255), 3))
 
-        else: break
+        else: 
+            print("No more frames.")
+            break
 
         if cv.waitKey(1) & 0xFF == ord("q"):
             break
