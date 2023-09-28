@@ -7,16 +7,22 @@ import multiprocessing
 BGR_CHANNELS = (0, 1, 2)
 channel_names = ["BLUE", "GREEN", "RED"]
 
-datetime = datetime.now()
 fileName = "Abbey_Road_2809.mp4"
 ratio = [16,9]
 in_width = 1920   
-in_height = int(in_width / ratio[0] * ratio[1])
-samplingRate = 1
 out_width = 1920
+
+in_height = int(in_width / ratio[0] * ratio[1])
 out_height= int(out_width / ratio[0] * ratio[1])
-sample_count = 1
 preview_resolution = (int(in_width*0.20) , int(in_height*0.20))
+
+sample_count = 350
+samplingRate = 1
+# Abbey_Road_2809.mp4 has 1660 frames of total
+
+seq0 = int(in_height/4)
+seq1 = int(in_height/2)
+seq2 = int(in_height/4*3)
 
 outputImage = np.zeros((in_height, in_width, 3), dtype = "uint8")
 
@@ -90,20 +96,38 @@ def main():
 
     frames = captureSequence()
 
-    seq0 = int(in_height/4)
-    seq1 = int(in_height/2)
-    seq2 = int(in_height/4*3)
+    pool = multiprocessing.Pool(6)
 
-    pool = multiprocessing.Pool()
     channel_blue0 = pool.apply_async(processChannel, (0, frames, seq0))
     channel_blue1 = pool.apply_async(processChannel, (0, frames, seq1))
     channel_blue2 = pool.apply_async(processChannel, (0, frames, seq2))
     channel_blue3 = pool.apply_async(processChannel, (0, frames, in_height))
 
+    channel_green0 = pool.apply_async(processChannel, (1, frames, seq0))
+    channel_green1 = pool.apply_async(processChannel, (1, frames, seq1))
+    channel_green2 = pool.apply_async(processChannel, (1, frames, seq2))
+    channel_green3 = pool.apply_async(processChannel, (1, frames, in_height))
+
+    channel_red0 = pool.apply_async(processChannel, (2, frames, seq0))
+    channel_red1 = pool.apply_async(processChannel, (2, frames, seq1))
+    channel_red2 = pool.apply_async(processChannel, (2, frames, seq2))
+    channel_red3 = pool.apply_async(processChannel, (2, frames, in_height))
+
     channel_blue0.wait()
     channel_blue1.wait()
     channel_blue2.wait()
     channel_blue3.wait()
+
+    channel_green0.wait()
+    channel_green1.wait()
+    channel_green2.wait()
+    channel_green3.wait()
+
+    channel_red0.wait()
+    channel_red1.wait()
+    channel_red2.wait()
+    channel_red3.wait()
+
     print("Processes OK.")
 
 
@@ -112,18 +136,40 @@ def main():
     channel_blue2 = channel_blue2.get()
     channel_blue3 = channel_blue3.get()
 
+    channel_green0 = channel_green0.get()
+    channel_green1 = channel_green1.get()
+    channel_green2 = channel_green2.get()
+    channel_green3 = channel_green3.get()
+
+    channel_red0 = channel_red0.get()
+    channel_red1 = channel_red1.get()
+    channel_red2 = channel_red2.get()
+    channel_red3 = channel_red3.get()
+
 
     channel_blue = np.array(channel_blue0, dtype="uint8")
     channel_blue[seq0:seq1, :] = channel_blue1[seq0:seq1, :]
     channel_blue[seq1:seq2, :] = channel_blue2[seq1:seq2, :]
     channel_blue[seq2:, :] = channel_blue3[seq2:, :]
 
+    channel_green = np.array(channel_green0, dtype="uint8")
+    channel_green[seq0:seq1, :] = channel_green1[seq0:seq1, :]
+    channel_green[seq1:seq2, :] = channel_green2[seq1:seq2, :]
+    channel_green[seq2:, :] = channel_green3[seq2:, :]
+
+    channel_red = np.array(channel_red0, dtype="uint8")
+    channel_red[seq0:seq1, :] = channel_red1[seq0:seq1, :]
+    channel_red[seq1:seq2, :] = channel_red2[seq1:seq2, :]
+    channel_red[seq2:, :] = channel_red3[seq2:, :]
+
 
     outputImage[:, :, 0] = channel_blue
-    # outputImage[:, :, 1] = channel_green[0]
-    # outputImage[:, :, 2] = channel_red[0]
+    outputImage[:, :, 1] = channel_green
+    outputImage[:, :, 2] = channel_red
     outputRsz = cv.resize(outputImage, (out_width,out_height))
-    cv.imwrite(f"output_{fileName.split('.')[0]}_{sample_count}_samples_{datetime.day}{datetime.month}{datetime.year}_{datetime.hour}{datetime.minute}.png", channel_blue)
+    
+    datetime = datetime.now()
+    cv.imwrite(f"output_{fileName.split('.')[0]}_{sample_count}_samples_{datetime.day}{datetime.month}{datetime.year}_{datetime.hour}{datetime.minute}.png", outputImage)
 
 
 if __name__ == '__main__':
