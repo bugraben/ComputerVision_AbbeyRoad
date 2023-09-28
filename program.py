@@ -1,8 +1,8 @@
 import cv2 as cv
 from time import sleep
 import numpy as np
-from multiprocessing import Process, Manager
 from datetime import datetime
+import multiprocessing
 
 BGR_CHANNELS = (0, 1, 2)
 channel_names = ["BLUE", "GREEN", "RED"]
@@ -19,30 +19,6 @@ sample_count = 1
 preview_resolution = (int(in_width*0.20) , int(in_height*0.20))
 
 outputImage = np.zeros((in_height, in_width, 3), dtype = "uint8")
-
-def processChannel(channel = None, frames = None, result = None, sequence:int = None):
-
-# preview_resolution, in_height, in_width değişkenleri main scope'ta ama local scopun içinden erişebiliyor
-
-    oneChannelFrame = np.zeros((in_height, in_width), dtype="uint8")
-    if channel in BGR_CHANNELS:
-        for row in range(sequence-int(in_height/4), sequence):
-            print(f"ROW: {row} | CHA: {channel_names[channel]}")
-            for column in range(0,in_width):
-                pixel = np.array([],dtype="uint8")
-                for fr in range(0,sample_count,samplingRate):
-                    pixel = np.append(pixel,frames[fr,row,column,channel])
-                    
-                oneChannelFrame[row, column] = pixel.mean()
-            oneChannelFrame_visualize = np.zeros((preview_resolution[1], preview_resolution[0], 3), dtype="uint8")
-            oneChannelFrame_visualize[:, :, channel] = cv.resize(oneChannelFrame, preview_resolution)
-            cv.imshow(channel_names[channel], cv.putText(oneChannelFrame_visualize, f"{row}/{sequence}", (50, 50), cv.FONT_HERSHEY_PLAIN, 1, (255,255,255), 2))
-            cv.waitKey(1)
-        cv.destroyAllWindows()
-        result.append(oneChannelFrame)
-                
-    else:
-        raise ValueError("results: Argument 'channel' must be one of %r." % BGR_CHANNELS)
 
 def captureSequence():
     frames = np.array([], dtype="uint8")
@@ -85,10 +61,32 @@ def captureSequence():
     frames = frames.reshape(sample_count, in_height, in_width, 3)
     return frames
 
-if __name__ == '__main__':
+def processChannel(channel = None, frames = None, sequence:int = None):
 
-    # if ((in_height/4 == in_height//4) and (in_width/4  == in_width//4)):
-    #     raise Exception("Resolution values must be exactly divided by 4")
+# preview_resolution, in_height, in_width değişkenleri main scope'ta ama local scopun içinden erişebiliyor
+
+    oneChannelFrame = np.zeros((in_height, in_width), dtype="uint8")
+    if channel in BGR_CHANNELS:
+        for row in range(sequence-int(in_height/4), sequence):
+            print(f"ROW: {row} | CHA: {channel_names[channel]}")
+            for column in range(0,in_width):
+                pixel = np.array([],dtype="uint8")
+                for fr in range(0,sample_count,samplingRate):
+                    pixel = np.append(pixel,frames[fr,row,column,channel])
+                    
+                oneChannelFrame[row, column] = pixel.mean()
+            oneChannelFrame_visualize = np.zeros((preview_resolution[1], preview_resolution[0], 3), dtype="uint8")
+            oneChannelFrame_visualize[:, :, channel] = cv.resize(oneChannelFrame, preview_resolution)
+            cv.imshow(channel_names[channel], cv.putText(oneChannelFrame_visualize, f"{row}/{sequence}", (50, 50), cv.FONT_HERSHEY_PLAIN, 1, (255,255,255), 2))
+            cv.waitKey(1)
+        cv.destroyAllWindows()
+        return oneChannelFrame  
+    else:
+        raise ValueError("results: Argument 'channel' must be one of %r." % BGR_CHANNELS)
+
+
+
+def main():
 
     frames = captureSequence()
 
@@ -96,46 +94,29 @@ if __name__ == '__main__':
     seq1 = int(in_height/2)
     seq2 = int(in_height/4*3)
 
-    manager = Manager()
+    pool = multiprocessing.Pool()
+    channel_blue0 = pool.apply_async(processChannel, (0, frames, seq0))
+    channel_blue1 = pool.apply_async(processChannel, (0, frames, seq1))
+    channel_blue2 = pool.apply_async(processChannel, (0, frames, seq2))
+    channel_blue3 = pool.apply_async(processChannel, (0, frames, in_height))
 
-    channel_blue = manager.list()
-    channel_blue0 = manager.list()
-    channel_blue1 = manager.list()
-    channel_blue2 = manager.list()
-    # channel_green = manager.list()
-    # channel_red = manager.list()
-
-
-    p_blue = Process(target=processChannel, args=(0, frames, channel_blue, seq0))
-    p_blue0 = Process(target=processChannel, args=(0, frames, channel_blue0, seq1))
-    p_blue1 = Process(target=processChannel, args=(0, frames, channel_blue1, seq2))
-    p_blue2 = Process(target=processChannel, args=(0, frames, channel_blue2, in_height))
-    # p_green = Process(target=processChannel, args=(1, frames, channel_green))
-    # p_red = Process(target=processChannel, args=(2, frames, channel_red))
-
-
-    p_blue.start()
-    p_blue0.start()
-    p_blue1.start()
-    p_blue2.start()
-    # p_green.start()
-    # p_red.start()
-    print("Processes have been started.")
-
-
-    p_blue.join()
-    p_blue0.join()
-    p_blue1.join()
-    p_blue2.join()
-    # p_green.join()
-    # p_red.join()
+    channel_blue0.wait()
+    channel_blue1.wait()
+    channel_blue2.wait()
+    channel_blue3.wait()
     print("Processes OK.")
 
 
-    channel_blue = np.array(channel_blue[0], dtype="uint8")
-    channel_blue[seq0:seq1, :] = channel_blue0[0][seq0:seq1, :]
-    channel_blue[seq1:seq2, :] = channel_blue1[0][seq1:seq2, :]
-    channel_blue[seq2:, :] = channel_blue2[0][seq2:, :]
+    channel_blue0 = channel_blue0.get()
+    channel_blue1 = channel_blue1.get()
+    channel_blue2 = channel_blue2.get()
+    channel_blue3 = channel_blue3.get()
+
+
+    channel_blue = np.array(channel_blue0, dtype="uint8")
+    channel_blue[seq0:seq1, :] = channel_blue1[seq0:seq1, :]
+    channel_blue[seq1:seq2, :] = channel_blue2[seq1:seq2, :]
+    channel_blue[seq2:, :] = channel_blue3[seq2:, :]
 
 
     outputImage[:, :, 0] = channel_blue
@@ -143,4 +124,14 @@ if __name__ == '__main__':
     # outputImage[:, :, 2] = channel_red[0]
     outputRsz = cv.resize(outputImage, (out_width,out_height))
     cv.imwrite(f"output_{fileName.split('.')[0]}_{sample_count}_samples_{datetime.day}{datetime.month}{datetime.year}_{datetime.hour}{datetime.minute}.png", channel_blue)
+
+
+if __name__ == '__main__':
+
+    # if ((in_height/4 == in_height//4) and (in_width/4  == in_width//4)):
+    #     raise Exception("Resolution values must be exactly divided by 4")
+
+    main()
+
+
 
