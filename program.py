@@ -15,9 +15,8 @@ in_height = int(in_width / ratio[0] * ratio[1])
 samplingRate = 1
 out_width = 1920
 out_height= int(out_width / ratio[0] * ratio[1])
-sample_count = 150
+sample_count = 1
 preview_resolution = (int(in_width*0.20) , int(in_height*0.20))
-
 
 outputImage = np.zeros((in_height, in_width, 3), dtype = "uint8")
 
@@ -37,7 +36,7 @@ def processChannel(channel = None, frames = None, result = None, sequence:int = 
                 oneChannelFrame[row, column] = pixel.mean()
             oneChannelFrame_visualize = np.zeros((preview_resolution[1], preview_resolution[0], 3), dtype="uint8")
             oneChannelFrame_visualize[:, :, channel] = cv.resize(oneChannelFrame, preview_resolution)
-            cv.imshow(channel_names[channel], cv.putText(oneChannelFrame_visualize, f"{row}/{sequence}", (50, 50), cv.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (255,255,255), 3))
+            cv.imshow(channel_names[channel], cv.putText(oneChannelFrame_visualize, f"{row}/{sequence}", (50, 50), cv.FONT_HERSHEY_PLAIN, 1, (255,255,255), 2))
             cv.waitKey(1)
         cv.destroyAllWindows()
         result.append(oneChannelFrame)
@@ -69,7 +68,7 @@ def captureSequence():
 
 
             # print(a)
-            cv.imshow("Video", cv.resize(cv.putText(frame, str(a), (50, 50), cv.FONT_HERSHEY_PLAIN, 3, (255 , 255, 255), 3) , (in_width*40, in_height*40)))
+            cv.imshow("Video", cv.resize(cv.putText(frame, str(a), (50, 50), cv.FONT_HERSHEY_PLAIN, 3, (255 , 255, 255), 3) , (int(in_width*0.40), int(in_height*0.40))))
 
         else: 
             print("Not enough samples!")
@@ -88,7 +87,14 @@ def captureSequence():
 
 if __name__ == '__main__':
 
+    # if ((in_height/4 == in_height//4) and (in_width/4  == in_width//4)):
+    #     raise Exception("Resolution values must be exactly divided by 4")
+
     frames = captureSequence()
+
+    seq0 = int(in_height/4)
+    seq1 = int(in_height/2)
+    seq2 = int(in_height/4*3)
 
     manager = Manager()
 
@@ -99,9 +105,6 @@ if __name__ == '__main__':
     # channel_green = manager.list()
     # channel_red = manager.list()
 
-    seq0 = int(in_height/4)
-    seq1 = int(in_height/2)
-    seq2 = int(in_height/4*3)
 
     p_blue = Process(target=processChannel, args=(0, frames, channel_blue, seq0))
     p_blue0 = Process(target=processChannel, args=(0, frames, channel_blue0, seq1))
@@ -128,15 +131,16 @@ if __name__ == '__main__':
     # p_red.join()
     print("Processes OK.")
 
-    channel_blue[0][seq0:seq1, :] = channel_blue0
-    channel_blue[0][seq1:seq2, :] = channel_blue1
-    channel_blue[0][seq2:, :] = channel_blue2
+
+    channel_blue = np.array(channel_blue[0], dtype="uint8")
+    channel_blue[seq0:seq1, :] = channel_blue0[0][seq0:seq1, :]
+    channel_blue[seq1:seq2, :] = channel_blue1[0][seq1:seq2, :]
+    channel_blue[seq2:, :] = channel_blue2[0][seq2:, :]
 
 
-    outputImage[:, :, 0] = channel_blue[0]
+    outputImage[:, :, 0] = channel_blue
     # outputImage[:, :, 1] = channel_green[0]
     # outputImage[:, :, 2] = channel_red[0]
-
     outputRsz = cv.resize(outputImage, (out_width,out_height))
-    cv.imwrite(f"output_{fileName.split('.')[0]}_{sample_count}_samples_{datetime.day}{datetime.month}{datetime.year}_{datetime.hour}{datetime.minute}.png",outputRsz)
+    cv.imwrite(f"output_{fileName.split('.')[0]}_{sample_count}_samples_{datetime.day}{datetime.month}{datetime.year}_{datetime.hour}{datetime.minute}.png", channel_blue)
 
