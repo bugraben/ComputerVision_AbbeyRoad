@@ -15,15 +15,17 @@ in_height = int(in_width / ratio[0] * ratio[1])
 samplingRate = 1
 out_width = 1920
 out_height= int(out_width / ratio[0] * ratio[1])
-sample_count = 600
+sample_count = 300
 preview_resolution = (int(in_width*0.35) , int(in_height*0.35))
 
 
 outputImage = np.zeros((in_height, in_width, 3), dtype = "uint8")
 
 def processChannel(channel = None, frames = None, result = None):
+
+# preview_resolution, in_height, in_width değişkenleri main scope'ta ama local scopun içinden erişebiliyor
+
     oneChannelFrame = np.zeros((in_height, in_width), dtype="uint8")
-    oneChannelFrame_visualize = np.zeros((in_height, in_width, 3), dtype="uint8")
     if channel in BGR_CHANNELS:
         for row in range(0,in_height):
             print(f"ROW: {row} | CHA: {channel_names[channel]}")
@@ -33,8 +35,9 @@ def processChannel(channel = None, frames = None, result = None):
                     pixel = np.append(pixel,frames[fr,row,column,channel])
                     
                 oneChannelFrame[row, column] = pixel.mean()
-            oneChannelFrame_visualize[:, :, channel] = cv.putText(cv.resize(oneChannelFrame, preview_resolution), f"{row}/{in_height}", (50, 50), cv.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (50), 4)
-            cv.imshow(channel_names[channel], oneChannelFrame_visualize)
+            oneChannelFrame_visualize = np.zeros((preview_resolution[1], preview_resolution[0], 3), dtype="uint8")
+            oneChannelFrame_visualize[:, :, channel] = cv.resize(oneChannelFrame, preview_resolution)
+            cv.imshow(channel_names[channel], cv.putText(oneChannelFrame_visualize, f"{row}/{in_height}", (50, 50), cv.FONT_HERSHEY_SCRIPT_SIMPLEX, 1, (255,255,255), 3))
             cv.waitKey(1)
         cv.destroyAllWindows()
         result.append(oneChannelFrame)
@@ -93,6 +96,9 @@ if __name__ == '__main__':
     channel_green = manager.list()
     channel_red = manager.list()
 
+    seq0 = in_height/3
+    seq1 = in_height/3*2
+    seq2 = None
 
     p_blue = Process(target=processChannel, args=(0, frames, channel_blue))
     p_green = Process(target=processChannel, args=(1, frames, channel_green))
