@@ -8,6 +8,7 @@ from os import getpid
 BGR_CHANNELS = (0, 1, 2)
 channel_names = ["BLUE", "GREEN", "RED"]
 
+# Defining input and output parameters.
 fileName = "Abbey_Road_2809.mp4"
 ratio = [16,9]
 in_width = 768   
@@ -17,9 +18,9 @@ in_height = int(in_width / ratio[0] * ratio[1])
 out_height= int(out_width / ratio[0] * ratio[1])
 preview_resolution = (480 , 270)
 
-sample_count = 1200 
-samplingRate = 8
 # Abbey_Road_2809.mp4 has 1660 frames of total
+sample_count = 1660 
+samplingRate = 2
 
 seq_length:int = int(in_height/10)
 seq0:int = int(seq_length)
@@ -78,7 +79,7 @@ def captureSequence():
 
 def processChannel(channel = None, frames = None, sequence:int = 0):
 
-# preview_resolution, in_height, in_width değişkenleri main scope'ta ama local scopun içinden erişebiliyor
+# preview_resolution, in_height, in_width değişkenleri main scope'ta ama local scopun içinden erişebiliyor?
 
     oneChannelFrame = np.zeros((in_height, in_width), dtype="uint8")
     if channel in BGR_CHANNELS:
@@ -113,10 +114,12 @@ def progressBar():
 
 def main():
 
+# Importing the video to an numpy array.
     frames = captureSequence()
 
     pool = Pool()
 
+# Splitting the frame process as 5 rows and as color channels.
     channel_blue0 = pool.apply_async(processChannel, (0, frames, seq0))
     channel_blue1 = pool.apply_async(processChannel, (0, frames, seq1))
     channel_blue2 = pool.apply_async(processChannel, (0, frames, seq2))
@@ -154,6 +157,7 @@ def main():
     channel_red9 = pool.apply_async(processChannel, (2, frames, seq9))
     print("Team red ready!")
 
+# Visualizing the progress.
     global progress
     progress=0
     channel_blue0.wait()
@@ -175,7 +179,6 @@ def main():
     channel_blue8.wait()
     progressBar() 
     channel_blue9.wait()
-
     progressBar()
 
     channel_green0.wait()
@@ -222,7 +225,7 @@ def main():
 
     print("Progress OK.")
 
-
+# Importing sequences from sub-processes
     channel_blue0 = channel_blue0.get()
     channel_blue1 = channel_blue1.get()
     channel_blue2 = channel_blue2.get()
@@ -256,7 +259,7 @@ def main():
     channel_red8 = channel_red8.get()
     channel_red9 = channel_red9.get()
 
-
+# Writing sequences into a main frame.
     channel_blue = np.array(channel_blue0, dtype="uint8")
     channel_blue[seq0:seq1, :] = channel_blue1[seq0:seq1, :]
     channel_blue[seq1:seq2, :] = channel_blue2[seq1:seq2, :]
@@ -294,6 +297,8 @@ def main():
     outputImage[:, :, 0] = channel_blue
     outputImage[:, :, 1] = channel_green
     outputImage[:, :, 2] = channel_red
+
+# Resizing output image and exporting.
     outputRsz = cv.resize(outputImage, (out_width,out_height))
     global datetime
     datetime = datetime.now()
