@@ -1,3 +1,6 @@
+# Code by bugraben
+# This program aims to create clear images of crowded streets using videos.
+
 import cv2 as cv
 from time import sleep
 import numpy as np
